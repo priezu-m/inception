@@ -1,0 +1,71 @@
+networks:
+  innet:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+services:
+  mariadb_service:
+    image: mariadb_image:prod
+    build: mariadb/
+    container_name: mariadb
+    env_file:
+      - .env
+    hostname: mariadb_server.net
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - 3306:3306
+    networks:
+      innet:
+        ipv4_address: 172.20.0.4
+    restart: always
+
+  php-fpm_service:
+    image: php-fpm_image:prod
+    build: php-fpm/
+    container_name: php-fpm
+    env_file:
+      - .env
+    hostname: php-fpm_server.net
+    volumes:
+      - wp_data:/var/www/html/wordpress
+    ports:
+      - 9000:9000
+    networks:
+      innet:
+        ipv4_address: 172.20.0.3
+    depends_on:
+      - mariadb_service
+    restart: always
+
+  nginx_service:
+    image: nginx_image:prod
+    build: nginx/
+    container_name: nginx
+    hostname: inception.net
+    volumes:
+      - wp_data:/var/www/html/wordpress
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      innet:
+        ipv4_address: 172.20.0.2
+    depends_on:
+      - php-fpm_service
+    restart: always
+
+volumes:
+  db_data:
+    driver: local # Define the driver and options under the volume name
+    driver_opts:
+      type: none
+      device: /home/$USER/data/db
+      o: bind
+  wp_data:
+    driver: local # Define the driver and options under the volume name
+    driver_opts:
+      type: none
+      device: /home/$USER/data/wordpress
+      o: bind
